@@ -55,13 +55,13 @@
         }
 
         .overlay-interno {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
             background-color: rgba(0, 0, 0, 0.95); display: none; flex-direction: column;
-            align-items: center; justify-content: center; border-radius: 4px; z-index: 20;
+            align-items: center; justify-content: center; z-index: 20;
             box-sizing: border-box; padding: 20px;
         }
 
-        .overlay h2 { color: #0ff; text-shadow: 0 0 20px #0ff; margin: 0 0 20px 0; font-size: 38px; letter-spacing: 4px;}
+        .overlay-interno h2 { color: #0ff; text-shadow: 0 0 20px #0ff; margin: 0 0 20px 0; font-size: 38px; letter-spacing: 4px;}
         #pauseOverlay h2 { color: #ff00ff; text-shadow: 0 0 20px #ff00ff; }
         #gameOverOverlay h2 { color: #ff073a; text-shadow: 0 0 20px #ff073a; }
         #goScore { color: #ffff00; font-size: 28px; margin: 10px 0 25px 0; text-shadow: 0 0 15px #ffff00; }
@@ -123,7 +123,7 @@
 </head>
 <body>
 
-    <div id="splashOverlay" class="overlay-interno" style="display: flex;">
+    <div id="splashOverlay">
         <img src="snakebyte.png" id="splashLogo" alt="Logo">
         <div id="splashTitle">SNAKEBYTE<br>STUDIOS</div>
         <div id="splashSub">Presenta</div>
@@ -185,51 +185,59 @@
         const grid = 20;
         let count = 0, score = 0, isPaused = false, isPlaying = false, isGameOver = false;
         
-        let audioCtx, soundEnabled = true, musicInterval;
+        // --- SISTEMA DE AUDIO REPARADO CON AISLAMIENTO DE VOCES ---
+        let audioCtx, musicCtx, soundEnabled = true, musicInterval;
         let noiseBuffer = null;
 
         function initAudio() { 
             if (!audioCtx) { 
+                // Contexto principal para efectos de sonido (SFX)
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+                
+                // CONTEXTO SECUNDARIO EXCLUSIVO PARA LA MÚSICA (Evita micro-cortes en Android)
+                musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
                 crearRuido(); 
                 startMusic(); 
             } 
         }
 
         function crearRuido() {
-            const bufferSize = audioCtx.sampleRate * 0.5;
-            noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            // El búfer se crea en el contexto de música ya que se usa para los Hi-Hats y Snares ritmicos
+            const bufferSize = musicCtx.sampleRate * 0.5;
+            noiseBuffer = musicCtx.createBuffer(1, bufferSize, musicCtx.sampleRate);
             const output = noiseBuffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) {
                 output[i] = Math.random() * 2 - 1;
             }
         }
 
+        // Modificados para reproducirse limpiamente en el canal aislado (musicCtx)
         function playNoise(duration, freq, vol) {
-            if(!soundEnabled || !audioCtx) return;
-            const source = audioCtx.createBufferSource();
+            if(!soundEnabled || !musicCtx) return;
+            const source = musicCtx.createBufferSource();
             source.buffer = noiseBuffer;
-            const filter = audioCtx.createBiquadFilter();
+            const filter = musicCtx.createBiquadFilter();
             filter.type = 'highpass';
             filter.frequency.value = freq;
-            const gain = audioCtx.createGain();
-            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            source.connect(filter).connect(gain).connect(audioCtx.destination);
-            source.start(); source.stop(audioCtx.currentTime + duration);
+            const gain = musicCtx.createGain();
+            gain.gain.setValueAtTime(vol, musicCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + duration);
+            source.connect(filter).connect(gain).connect(musicCtx.destination);
+            source.start(); source.stop(musicCtx.currentTime + duration);
         }
 
         function playKick() {
-            if(!soundEnabled || !audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            if(!soundEnabled || !musicCtx) return;
+            const osc = musicCtx.createOscillator();
+            const gain = musicCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-            gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-            osc.connect(gain).connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            osc.frequency.setValueAtTime(150, musicCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(0.01, musicCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.8, musicCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + 0.3);
+            osc.connect(gain).connect(musicCtx.destination);
+            osc.start(); osc.stop(musicCtx.currentTime + 0.3);
         }
 
         function startMusic() { 
@@ -240,36 +248,37 @@
             const arpNotes = [440, 523.25, 659.25, 523.25, 440, 349.23, 440, 523.25];
 
             musicInterval = setInterval(() => {
-                if(isPaused || !soundEnabled || !isPlaying) return;
+                if(isPaused || !soundEnabled || !isPlaying || !musicCtx) return;
                 const currentStep = step % 16;
                 if (currentStep === 0 || currentStep === 8) playKick();
                 if (currentStep === 4 || currentStep === 12) playNoise(0.15, 1000, 0.3);
                 if (currentStep % 2 === 0) playNoise(0.05, 7000, 0.1);
 
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
+                const osc = musicCtx.createOscillator();
+                const gain = musicCtx.createGain();
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(bassNotes[currentStep], audioCtx.currentTime);
+                osc.frequency.setValueAtTime(bassNotes[currentStep], musicCtx.currentTime);
                 const bassVol = (currentStep === 0 || currentStep === 8) ? 0.2 : 0.12;
-                gain.gain.setValueAtTime(bassVol, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-                osc.connect(gain).connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(bassVol, musicCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + 0.15);
+                osc.connect(gain).connect(musicCtx.destination);
+                osc.start(); osc.stop(musicCtx.currentTime + 0.15);
 
                 if (currentStep < 8) {
-                    const osc2 = audioCtx.createOscillator();
-                    const gain2 = audioCtx.createGain();
+                    const osc2 = musicCtx.createOscillator();
+                    const gain2 = musicCtx.createGain();
                     osc2.type = 'square';
-                    osc2.frequency.setValueAtTime(arpNotes[currentStep], audioCtx.currentTime);
-                    gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                    gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-                    osc2.connect(gain2).connect(audioCtx.destination);
-                    osc2.start(); osc2.stop(audioCtx.currentTime + 0.08);
+                    osc2.frequency.setValueAtTime(arpNotes[currentStep], musicCtx.currentTime);
+                    gain2.gain.setValueAtTime(0.08, musicCtx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + 0.08);
+                    osc2.connect(gain2).connect(musicCtx.destination);
+                    osc2.start(); osc2.stop(musicCtx.currentTime + 0.08);
                 }
                 step++;
             }, stepTime);
         }
 
+        // Los efectos de interacción siguen corriendo en audioCtx para no mezclarse con los ritmos estables
         function playTone(f, d, t='square', v=0.15) { if(!soundEnabled||!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.setValueAtTime(f,audioCtx.currentTime);g.gain.setValueAtTime(v,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d); }
         function playMoveSound() { playTone(900, 0.05, 'square', 0.03); }
         function playEatRedSound() { playTone(600, 0.1, 'square', 0.2); setTimeout(() => playTone(800, 0.1, 'square', 0.2), 50); }
@@ -278,6 +287,7 @@
         function playDeathSound() { playTone(300, 0.3, 'sawtooth', 0.4); setTimeout(() => playTone(100, 0.5, 'sawtooth', 0.5), 200); }
         function playLevelUpSound() { playTone(1200, 0.1, 'sine', 0.3); setTimeout(() => playTone(1600, 0.2, 'sine', 0.3), 100); }
 
+        // --- LÓGICA Y CONFIGURACIÓN GENERAL DEL JUEGO ---
         const velocidades = [ { nombre: "1", retraso: 16 }, { nombre: "2", retraso: 12 }, { nombre: "3", retraso: 7 }, { nombre: "4", retraso: 4 } ];
         let indiceVelocidad = 0, frameDelay = velocidades[indiceVelocidad].retraso;
         let particulas = [], flashOpacity = 0;
@@ -360,7 +370,6 @@
             if (!isPlaying || isPaused || isGameOver) return;
             if (++count < frameDelay) return; count = 0;
 
-            // Aplicar dirección pendiente - FIX PRINCIPAL
             snake.dx = nextDx;
             snake.dy = nextDy;
             giroAplicadoEsteTick = false;
@@ -419,10 +428,14 @@
         agregarEventoControl('btnDerecha', grid, 0); 
         agregarEventoControl('btnAbajo', 0, grid);
 
-        setTimeout(() => { document.getElementById('splashOverlay').style.display = 'none'; irAlMenu(); }, 3500);
+        // --- MANEJO DEL SPLASH SCREEN ---
+        setTimeout(() => { 
+            document.getElementById('splashOverlay').style.display = 'none'; 
+            irAlMenu(); 
+        }, 3500);
+
         requestAnimationFrame(loop);
 
-        // Registro del Service Worker para funcionamiento offline y actualizaciones automáticas
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('service-worker.js')
