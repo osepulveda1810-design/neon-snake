@@ -318,7 +318,7 @@
         function hayPartidaGuardada() { return localStorage.getItem('neonSnakeSave') !== null; }
         function guardarRanking(p) { let r = JSON.parse(localStorage.getItem('neonSnakeRanking') || '[]'); r.push(p); r.sort((a, b) => b - a); if(r.length > 5) r = r.slice(0, 5); localStorage.setItem('neonSnakeRanking', JSON.stringify(r)); }
         
-        function mostrarRanking() { let r = JSON.parse(localStorage.getItem('neonSnakeRanking') || '[]'); let h = ''; if (r.length === 0) h = '<li style="color:#888; justify-content:center;">Sin registros</li>'; else r.forEach((p, i) => { h += `<li><span class="rank-pos">#\( {i + 1}</span> <span class="rank-pts"> \){p} pts</span></li>`; }); document.getElementById('rankList').innerHTML = h; ocultarTodo(); mostrar('rankingOverlay'); }
+        function mostrarRanking() { let r = JSON.parse(localStorage.getItem('neonSnakeRanking') || '[]'); let h = ''; if (r.length === 0) h = '<li style="color:#888; justify-content:center;">Sin registros</li>'; else r.forEach((p, i) => { h += `<li><span class="rank-pos">#${i + 1}</span> <span class="rank-pts">${p} pts</span></li>`; }); document.getElementById('rankList').innerHTML = h; ocultarTodo(); mostrar('rankingOverlay'); }
 
         function ocultarTodo() { ['menuOverlay', 'gameOverOverlay', 'rankingOverlay', 'pauseOverlay', 'splashOverlay'].forEach(id => { document.getElementById(id).style.display = 'none'; }); }
         function mostrar(id) { document.getElementById(id).style.display = 'flex'; }
