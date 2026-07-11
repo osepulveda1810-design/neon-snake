@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Neon Snake V2.2</title>
+    <title>Neon Snake V2.4 - Final Edition</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <link rel="icon" href="icons/icon-192.png">
@@ -15,11 +15,12 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             height: 100vh; margin: 0; overflow: hidden;
             user-select: none; -webkit-user-select: none;
+            transition: color 0.5s ease;
         }
 
         #gameUI { display: none; flex-direction: column; align-items: center; justify-content: center; }
 
-        h1 { margin: 10px 0 5px 0; font-size: 24px; color: #0ff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; letter-spacing: 4px; }
+        h1 { margin: 10px 0 5px 0; font-size: 24px; color: #0ff; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; letter-spacing: 4px; transition: all 0.5s ease; }
 
         #ui-superior {
             display: flex; justify-content: space-between; align-items: center;
@@ -30,7 +31,7 @@
 
         .btn-ui {
             font-family: 'Courier New', Courier, monospace; font-size: 10px; font-weight: bold;
-            padding: 5px 8px; background-color: transparent; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+            padding: 5px 8px; background-color: transparent; border-radius: 4px; cursor: pointer; transition: all 0.5s ease;
         }
         .btn-ui:active { transform: scale(0.95); filter: brightness(1.5); }
         #btnVelocidad { color: #ffff00; border: 2px solid #ffff00; box-shadow: 0 0 5px #ffff00; }
@@ -45,6 +46,7 @@
             background-color: #000; border: 2px solid #0ff; width: 100%; height: 100%; 
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.3), inset 0 0 15px rgba(0, 255, 255, 0.1);
             border-radius: 4px; display: block;
+            transition: border-color 0.5s ease, box-shadow 0.5s ease;
         }
 
         #menuOverlay, #gameOverOverlay, #rankingOverlay, #pauseOverlay {
@@ -111,7 +113,7 @@
             width: 65px; height: 65px; font-size: 26px; background: transparent; color: #0ff;
             border: 2px solid #0ff; border-radius: 12px; cursor: pointer; display: flex;
             align-items: center; justify-content: center;
-            box-shadow: 0 0 10px #0ff, inset 0 0 10px rgba(0, 255, 255, 0.2); transition: 0.1s;
+            box-shadow: 0 0 10px #0ff, inset 0 0 10px rgba(0, 255, 255, 0.2); transition: all 0.5s ease;
             -webkit-tap-highlight-color: transparent;
         }
         .boton-flecha:active { background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 20px #0ff; transform: scale(0.95); }
@@ -130,7 +132,7 @@
     </div>
 
     <div id="gameUI">
-        <h1>NEON SNAKE</h1>
+        <h1 id="tituloJuego">NEON SNAKE</h1>
         <div id="ui-superior">
             <div id="puntuacion">PUNTOS: 0</div>
             <div class="contenedor-botones">
@@ -150,7 +152,7 @@
             <button id="btnDerecha" class="boton-flecha">►</button>
             <button id="btnAbajo" class="boton-flecha">▼</button>
         </div>
-        <div id="versionTag">v 2.2</div>
+        <div id="versionTag">v 2.4 Final</div>
     </div>
 
     <div id="menuOverlay" class="overlay-interno">
@@ -185,7 +187,7 @@
         const grid = 20;
         let count = 0, score = 0, isPaused = false, isPlaying = false, isGameOver = false;
         
-        // --- SISTEMA DE AUDIO REPARADO CON AISLAMIENTO DE VOCES ---
+        // --- SISTEMA DE AUDIO DINÁMICO EVOLUTIVO (ESTILO GEOMETRY DASH) ---
         let audioCtx, musicCtx, soundEnabled = true, musicInterval;
         let noiseBuffer = null;
 
@@ -235,57 +237,114 @@
         }
 
         function startMusic() { 
-            const bpm = 140; 
+            const bpm = 145; // Un poco más rápido para dar vibra de Geometry Dash
             const stepTime = (60 / bpm) / 4 * 1000;
             let step = 0;
-            const bassNotes = [55, 55, 55, 55, 55, 55, 73.42, 73.42, 87.31, 87.31, 87.31, 87.31, 98, 98, 98, 98];
-            const arpNotes = [440, 523.25, 659.25, 523.25, 440, 349.23, 440, 523.25];
+
+            // Diferentes notas de bajo según nivel
+            const bassNivelBajo = [55, 55, 55, 55, 55, 55, 73.42, 73.42, 87.31, 87.31, 87.31, 87.31, 98, 98, 98, 98];
+            const bassNivelAlto = [41.20, 41.20, 49.00, 49.00, 55, 55, 55, 55, 65.41, 65.41, 73.42, 73.42, 82.41, 82.41, 98, 98];
+
+            // Diferentes melodías de arpegio según nivel
+            const arpBase = [440, 523.25, 659.25, 523.25, 440, 349.23, 440, 523.25];
+            const arpCyber = [587.33, 698.46, 880.00, 698.46, 783.99, 932.33, 1046.50, 932.33];
 
             musicInterval = setInterval(() => {
                 if(isPaused || !soundEnabled || !isPlaying || !musicCtx) return;
                 const currentStep = step % 16;
-                if (currentStep === 0 || currentStep === 8) playKick();
-                if (currentStep === 4 || currentStep === 12) playNoise(0.15, 1000, 0.3);
-                if (currentStep % 2 === 0) playNoise(0.05, 7000, 0.1);
-
-                const osc = musicCtx.createOscillator();
-                const gain = musicCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(bassNotes[currentStep], musicCtx.currentTime);
-                const bassVol = (currentStep === 0 || currentStep === 8) ? 0.2 : 0.12;
-                gain.gain.setValueAtTime(bassVol, musicCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + 0.15);
-                osc.connect(gain).connect(musicCtx.destination);
-                osc.start(); osc.stop(musicCtx.currentTime + 0.15);
-
-                if (currentStep < 8) {
-                    const osc2 = musicCtx.createOscillator();
-                    const gain2 = musicCtx.createGain();
-                    osc2.type = 'square';
-                    osc2.frequency.setValueAtTime(arpNotes[currentStep], musicCtx.currentTime);
-                    gain2.gain.setValueAtTime(0.08, musicCtx.currentTime);
-                    gain2.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + 0.08);
-                    osc2.connect(gain2).connect(musicCtx.destination);
-                    osc2.start(); osc2.stop(musicCtx.currentTime + 0.08);
+                
+                // --- CAPA 1: PERCUSIÓN GEOMETRY DASH EVOLUTIVA ---
+                if (nivelActual >= 3) {
+                    // Ritmo de bombo doble y más agresivo en niveles altos
+                    if (currentStep === 0 || currentStep === 6 || currentStep === 8 || currentStep === 14) playKick();
+                } else {
+                    // Ritmo estándar
+                    if (currentStep === 0 || currentStep === 8) playKick();
                 }
+
+                // Caja/Snare con Ruido Blanco en niveles intermedios y avanzados
+                if (nivelActual >= 2) {
+                    if (currentStep === 4 || currentStep === 12) playNoise(0.18, 1200, 0.35);
+                } else {
+                    if (currentStep === 4 || currentStep === 12) playNoise(0.12, 1000, 0.2);
+                }
+
+                // Hi-Hats rápidos en los contratiempos
+                if (currentStep % 2 === 0) {
+                    const hihatVol = (nivelActual >= 5) ? 0.15 : 0.08;
+                    playNoise(0.04, 7500, hihatVol);
+                }
+
+                // --- CAPA 2: BAJO SINTETIZADO DINÁMICO ---
+                const oscBass = musicCtx.createOscillator();
+                const gainBass = musicCtx.createGain();
+                
+                // Si llegamos a niveles altos, el sintetizador del bajo muta a 'sawtooth' (más rasposo/electrónico)
+                oscBass.type = (nivelActual >= 4) ? 'sawtooth' : 'triangle';
+                
+                // Cambia la progresión de notas musicales según dificultad
+                const notasBajoActual = (nivelActual >= 5) ? bassNivelAlto : bassNivelBajo;
+                oscBass.frequency.setValueAtTime(notasBajoActual[currentStep], musicCtx.currentTime);
+                
+                const bassVol = (currentStep === 0 || currentStep === 8) ? 0.25 : 0.15;
+                gainBass.gain.setValueAtTime(bassVol, musicCtx.currentTime);
+                gainBass.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + 0.14);
+                
+                oscBass.connect(gainBass).connect(musicCtx.destination);
+                oscBass.start(); oscBass.stop(musicCtx.currentTime + 0.14);
+
+                // --- CAPA 3: MELODÍA / ARPEGIO QUE EVOLUCIONA ---
+                if (currentStep < 8) {
+                    const oscArp = musicCtx.createOscillator();
+                    const gainArp = musicCtx.createGain();
+                    
+                    // Muta el tipo de onda para sonar más cyber y agudo en niveles altos
+                    if (nivelActual >= 7) {
+                        oscArp.type = 'sawtooth'; // Sonido agresivo clímax
+                    } else if (nivelActual >= 3) {
+                        oscArp.type = 'square'; // Chiptune marcado
+                    } else {
+                        oscArp.type = 'sine'; // Melodía suave inicial
+                    }
+
+                    // Selecciona melodía épica o básica
+                    let notaFrec = (nivelActual >= 4) ? arpCyber[currentStep] : arpBase[currentStep];
+                    
+                    // Sube una octava (multiplica x2) en niveles intermedios para dar sensación de velocidad
+                    if (nivelActual >= 2 && nivelActual < 4) notaFrec *= 2;
+
+                    oscArp.frequency.setValueAtTime(notaFrec, musicCtx.currentTime);
+                    
+                    const arpVol = (nivelActual >= 6) ? 0.09 : 0.06;
+                    gainArp.gain.setValueAtTime(arpVol, musicCtx.currentTime);
+                    gainArp.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + 0.09);
+                    
+                    oscArp.connect(gainArp).connect(musicCtx.destination);
+                    oscArp.start(); oscArp.stop(musicCtx.currentTime + 0.09);
+                }
+                
                 step++;
             }, stepTime);
         }
 
         function playTone(f, d, t='square', v=0.15) { if(!soundEnabled||!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.setValueAtTime(f,audioCtx.currentTime);g.gain.setValueAtTime(v,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d); }
-        function playMoveSound() { playTone(900, 0.05, 'square', 0.03); }
+        function playMoveSound() { playTone(900, 0.05, 'square', 0.02); }
         function playEatRedSound() { playTone(600, 0.1, 'square', 0.2); setTimeout(() => playTone(800, 0.1, 'square', 0.2), 50); }
         function playEatGreenSound() { playTone(800, 0.1, 'sawtooth', 0.2); setTimeout(() => playTone(1200, 0.15, 'sawtooth', 0.2), 70); }
         function playEatYellowSound() { playTone(600, 0.15, 'sawtooth', 0.3); setTimeout(() => playTone(900, 0.15, 'sawtooth', 0.3), 100); setTimeout(() => playTone(1400, 0.2, 'sine', 0.4), 200); }
         function playDeathSound() { playTone(300, 0.3, 'sawtooth', 0.4); setTimeout(() => playTone(100, 0.5, 'sawtooth', 0.5), 200); }
-        function playLevelUpSound() { playTone(1200, 0.1, 'sine', 0.3); setTimeout(() => playTone(1600, 0.2, 'sine', 0.3), 100); }
+        function playLevelUpSound() { playTone(1000, 0.08, 'sine', 0.3); setTimeout(() => playTone(1500, 0.15, 'sine', 0.3), 80); }
 
-        // --- CONFIGURACIÓN GENERAL DEL JUEGO ---
-        const velocidades = [ { nombre: "1", retraso: 16 }, { nombre: "2", retraso: 12 }, { nombre: "3", retraso: 7 }, { nombre: "4", retraso: 4 } ];
-        let indiceVelocidad = 0, frameDelay = velocidades[indiceVelocidad].retraso;
+        // --- PALETA DE COLORES NEÓN ---
+        const COLORES_NEON = ['#0ff', '#39ff14', '#ff00ff', '#ffff00', '#ff5e00', '#0044ff', '#ffffff', '#ff007f'];
+        let colorNeonActual = '#0ff';
+
+        // --- SISTEMA DE VELOCIDAD EQUILIBRADO ---
+        let nivelActual = 0; 
+        let frameDelay = 16; 
+        
         let particulas = [], flashOpacity = 0;
         
-        // VARIABLES DE MOVIMIENTO CON BUFFER OPTIMIZADO
         let snake = { x: 160, y: 160, dx: grid, dy: 0, cells: [], maxCells: 4 };
         let inputQueue = []; 
 
@@ -296,31 +355,74 @@
 
         function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min)) + min; }
         function generarPosicion() { return { x: getRandomInt(0, 20) * grid, y: getRandomInt(0, 20) * grid }; }
-        function updateSpeedUI() { document.getElementById('btnVelocidad').innerText = velocidades[indiceVelocidad].nombre; }
-        function checkAutoSpeed() { let vr = Math.min(velocidades.length - 1, Math.floor(score / 350)); if (vr > indiceVelocidad) { indiceVelocidad = vr; frameDelay = velocidades[indiceVelocidad].retraso; updateSpeedUI(); playLevelUpSound(); } }
+        
+        function updateSpeedUI() { 
+            document.getElementById('btnVelocidad').innerText = (nivelActual + 1); 
+        }
 
-        function guardarEstado() { localStorage.setItem('neonSnakeSave', JSON.stringify({ snake, score, manzanaRoja, manzanaVerde, manzanaAmarilla, indiceVelocidad })); }
+        function checkAutoSpeed() { 
+            let nuevoNivel = 0;
+            if (score >= 200) {
+                nuevoNivel = 1 + Math.floor((score - 200) / 100);
+            }
+            if (nuevoNivel > 7) nuevoNivel = 7; 
+
+            if (nuevoNivel > nivelActual) { 
+                nivelActual = nuevoNivel;
+                
+                // Curva calibrada súper suave (Tope original = 10)
+                const tablaRetrasos = [16, 15, 14, 13, 12, 11, 10.5, 10];
+                frameDelay = tablaRetrasos[nivelActual];
+                
+                let coloresDisponibles = COLORES_NEON.filter(c => c !== colorNeonActual);
+                colorNeonActual = coloresDisponibles[Math.floor(Math.random() * coloresDisponibles.length)];
+                
+                aplicarColorNeonInterfaz(colorNeonActual);
+                updateSpeedUI(); 
+                playLevelUpSound(); 
+            } 
+        }
+
+        function aplicarColorNeonInterfaz(color) {
+            const titulo = document.getElementById('tituloJuego');
+            titulo.style.color = color;
+            titulo.style.textShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
+            canvas.style.borderColor = color;
+            canvas.style.boxShadow = `0 0 15px ${color}4d, inset 0 0 15px ${color}1a`;
+            
+            document.querySelectorAll('.boton-flecha').forEach(btn => {
+                btn.style.color = color;
+                btn.style.borderColor = color;
+                btn.style.boxShadow = `0 0 10px ${color}, inset 0 0 10px ${color}33`;
+            });
+
+            const btnS = document.getElementById('btnSonido');
+            btnS.style.color = color;
+            btnS.style.borderColor = color;
+            btnS.style.boxShadow = `0 0 5px ${color}`;
+        }
+
+        function restaurarColorInicial() {
+            colorNeonActual = '#0ff';
+            aplicarColorNeonInterfaz('#0ff');
+        }
+
+        function guardarEstado() { localStorage.setItem('neonSnakeSave', JSON.stringify({ snake, score, manzanaRoja, manzanaVerde, manzanaAmarilla, nivelActual, frameDelay, colorNeonActual })); }
         function cargarEstado() { 
             let s = localStorage.getItem('neonSnakeSave'); 
             if (s) { 
                 let e = JSON.parse(s); 
-                snake = e.snake; 
-                score = e.score; 
-                manzanaRoja = e.manzanaRoja; 
-                manzanaVerde = e.manzanaVerde; 
-                manzanaAmarilla = e.manzanaAmarilla; 
-                indiceVelocidad = e.indiceVelocidad; 
-                frameDelay = velocidades[indiceVelocidad].retraso; 
-                inputQueue = []; 
-                updateSpeedUI(); 
+                snake = e.snake; score = e.score; manzanaRoja = e.manzanaRoja; manzanaVerde = e.manzanaVerde; manzanaAmarilla = e.manzanaAmarilla; 
+                nivelActual = e.nivelActual || 0; frameDelay = e.frameDelay || 16; colorNeonActual = e.colorNeonActual || '#0ff';
+                inputQueue = []; aplicarColorNeonInterfaz(colorNeonActual); updateSpeedUI(); 
                 document.getElementById('puntuacion').innerText = "PUNTOS: " + score; 
                 return true; 
             } 
             return false; 
         }
+        
         function hayPartidaGuardada() { return localStorage.getItem('neonSnakeSave') !== null; }
         function guardarRanking(p) { let r = JSON.parse(localStorage.getItem('neonSnakeRanking') || '[]'); r.push(p); r.sort((a, b) => b - a); if(r.length > 5) r = r.slice(0, 5); localStorage.setItem('neonSnakeRanking', JSON.stringify(r)); }
-        
         function mostrarRanking() { let r = JSON.parse(localStorage.getItem('neonSnakeRanking') || '[]'); let h = ''; if (r.length === 0) h = '<li style="color:#888; justify-content:center;">Sin registros</li>'; else r.forEach((p, i) => { h += `<li><span class="rank-pos">#${i + 1}</span> <span class="rank-pts">${p} pts</span></li>`; }); document.getElementById('rankList').innerHTML = h; ocultarTodo(); mostrar('rankingOverlay'); }
 
         function ocultarTodo() { ['menuOverlay', 'gameOverOverlay', 'rankingOverlay', 'pauseOverlay', 'splashOverlay'].forEach(id => { document.getElementById(id).style.display = 'none'; }); }
@@ -332,13 +434,11 @@
         
         function resetGameVariables() { 
             snake = { x: 160, y: 160, dx: grid, dy: 0, cells: [], maxCells: 4 }; 
-            inputQueue = []; 
-            score = 0; 
-            indiceVelocidad = 0; 
-            frameDelay = velocidades[indiceVelocidad].retraso; 
+            inputQueue = []; score = 0; nivelActual = 0; frameDelay = 16; 
             manzanaRoja = generarPosicion(); 
             manzanaVerde = { x: 0, y: 0, activa: false, timerVida: 0, timerSpawn: 100 }; 
             manzanaAmarilla = { x: 0, y: 0, activa: false, timerVida: 0, timerSpawn: 200 }; 
+            restaurarColorInicial();
         }
         
         function triggerGameOver() { isPlaying = false; isGameOver = true; playDeathSound(); guardarRanking(score); localStorage.removeItem('neonSnakeSave'); document.getElementById('goScore').innerText = score + " PUNTOS"; apagarJuego(); mostrar('gameOverOverlay'); }
@@ -349,29 +449,26 @@
         function cambiarDireccion(ndx, ndy) { 
             initAudio(); 
             if(!isPlaying || isPaused || isGameOver) return; 
-            
             let ultimaD = inputQueue.length > 0 ? inputQueue[inputQueue.length - 1] : { dx: snake.dx, dy: snake.dy };
-
             if (ndx === -ultimaD.dx && ndy === -ultimaD.dy) return;
             if (ndx === ultimaD.dx && ndy === ultimaD.dy) return; 
-
-            if (inputQueue.length < 2) {
-                inputQueue.push({ dx: ndx, dy: ndy });
-            }
+            if (inputQueue.length < 2) inputQueue.push({ dx: ndx, dy: ndy });
         }
         
-        function dibujarGrid() { ctx.strokeStyle='rgba(0,255,255,0.05)';ctx.lineWidth=1;for(let i=0;i<=canvas.width;i+=grid){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,canvas.height);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(canvas.width,i);ctx.stroke();} }
+        function dibujarGrid() { ctx.strokeStyle='rgba(0,255,255,0.03)';ctx.lineWidth=1;for(let i=0;i<=canvas.width;i+=grid){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,canvas.height);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(canvas.width,i);ctx.stroke();} }
         function dibujarManzana(m, c) { let mo=true; if(m.timerVida<180&&m.timerVida>0) mo=m.timerVida%10<5; if(mo){ctx.shadowBlur=20;ctx.shadowColor=c;ctx.fillStyle=c;ctx.fillRect(m.x+2,m.y+2,grid-4,grid-4);ctx.shadowBlur=0;} }
 
         function loop() {
             requestAnimationFrame(loop);
             if (!isPlaying || isPaused || isGameOver) return;
-            if (++count < frameDelay) return; count = 0;
+            
+            count += 1;
+            if (count < frameDelay) return; 
+            count = 0;
 
             if (inputQueue.length > 0) {
                 const siguienteGiro = inputQueue.shift();
-                snake.dx = siguienteGiro.dx;
-                snake.dy = siguienteGiro.dy;
+                snake.dx = siguienteGiro.dx; snake.dy = siguienteGiro.dy;
             }
 
             playMoveSound(); ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, canvas.width, canvas.height); dibujarGrid();
@@ -380,16 +477,31 @@
             if (snake.x < 0) snake.x = canvas.width - grid; else if (snake.x >= canvas.width) snake.x = 0;
             if (snake.y < 0) snake.y = canvas.height - grid; else if (snake.y >= canvas.height) snake.y = 0;
             snake.cells.unshift({ x: snake.x, y: snake.y }); if (snake.cells.length > snake.maxCells) snake.cells.pop();
+            
             if (!manzanaVerde.activa) { manzanaVerde.timerSpawn--; if (manzanaVerde.timerSpawn <= 0) { let np=generarPosicion(); manzanaVerde.x=np.x; manzanaVerde.y=np.y; manzanaVerde.activa=true; manzanaVerde.timerVida=TIEMPO_VIDA_BONUS; manzanaVerde.timerSpawn=TIEMPO_RESPAWN_VERDE; } } else { manzanaVerde.timerVida--; if (manzanaVerde.timerVida <= 0) manzanaVerde.activa = false; }
             if (!manzanaAmarilla.activa) { manzanaAmarilla.timerSpawn--; if (manzanaAmarilla.timerSpawn <= 0) { let np=generarPosicion(); manzanaAmarilla.x=np.x; manzanaAmarilla.y=np.y; manzanaAmarilla.activa=true; manzanaAmarilla.timerVida=TIEMPO_VIDA_BONUS; manzanaAmarilla.timerSpawn=TIEMPO_RESPAWN_AMARILLA; } } else { manzanaAmarilla.timerVida--; if (manzanaAmarilla.timerVida <= 0) manzanaAmarilla.activa = false; }
+            
             dibujarManzana(manzanaRoja, '#ff073a'); if (manzanaVerde.activa) dibujarManzana(manzanaVerde, '#39ff14'); if (manzanaAmarilla.activa) dibujarManzana(manzanaAmarilla, '#ffff00');
-            snake.cells.forEach(function(cell, index) { ctx.shadowBlur = 15; ctx.shadowColor = '#0ff'; ctx.fillStyle = (index === 0) ? '#ffffff' : '#0ff'; ctx.fillRect(cell.x + 1, cell.y + 1, grid - 2, grid - 2); ctx.shadowBlur = 0; for (let i = index + 1; i < snake.cells.length; i++) { if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) { triggerGameOver(); return; } } });
+            
+            snake.cells.forEach(function(cell, index) { 
+                ctx.shadowBlur = 15; ctx.shadowColor = colorNeonActual; 
+                ctx.fillStyle = (index === 0) ? '#ffffff' : colorNeonActual; 
+                ctx.fillRect(cell.x + 1, cell.y + 1, grid - 2, grid - 2); 
+                ctx.shadowBlur = 0; 
+                for (let i = index + 1; i < snake.cells.length; i++) { 
+                    if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) { triggerGameOver(); return; } 
+                } 
+            });
+            
             for (let i = particulas.length - 1; i >= 0; i--) { let p=particulas[i]; p.x+=p.dx; p.y+=p.dy; p.life-=0.04; if(p.life<=0){particulas.splice(i,1);continue;} ctx.shadowBlur=10;ctx.shadowColor=p.color;ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.size,p.size);ctx.shadowBlur=0; }
+            
             let head = snake.cells[0];
             if (head.x === manzanaRoja.x && head.y === manzanaRoja.y) { score += 10; playEatRedSound(); crearExplosion(manzanaRoja.x + grid/2, manzanaRoja.y + grid/2, '#ff073a'); manzanaRoja = generarPosicion(); snake.maxCells++; }
             if (manzanaVerde.activa && head.x === manzanaVerde.x && head.y === manzanaVerde.y) { score += 20; playEatGreenSound(); crearExplosion(manzanaVerde.x + grid/2, manzanaVerde.y + grid/2, '#39ff14'); manzanaVerde.activa = false; manzanaVerde.timerSpawn = TIEMPO_RESPAWN_VERDE; snake.maxCells++; }
             if (manzanaAmarilla.activa && head.x === manzanaAmarilla.x && head.y === manzanaAmarilla.y) { score += 50; playEatYellowSound(); crearExplosion(manzanaAmarilla.x + grid/2, manzanaAmarilla.y + grid/2, '#ffff00'); manzanaAmarilla.activa = false; manzanaAmarilla.timerSpawn = TIEMPO_RESPAWN_AMARILLA; snake.maxCells += 2; }
-            checkAutoSpeed(); document.getElementById('puntuacion').innerText = "PUNTOS: " + score;
+            
+            checkAutoSpeed(); 
+            document.getElementById('puntuacion').innerText = "PUNTOS: " + score;
         }
 
         function addTouchEvt(id, fn) { const el = document.getElementById(id); el.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); fn(); }, {passive: false}); el.addEventListener('click', e => { e.preventDefault(); fn(); }); }
@@ -401,7 +513,7 @@
         addTouchEvt('btnSalirMenu', irAlMenu);
         addTouchEvt('btnContinuar', () => { ocultarTodo(); encenderJuego(); isPaused = false; });
         addTouchEvt('btnGuardarPausa', () => { guardarEstado(); irAlMenu(); });
-        addTouchEvt('btnVelocidad', () => { initAudio(); indiceVelocidad = (indiceVelocidad + 1) % velocidades.length; frameDelay = velocidades[indiceVelocidad].retraso; updateSpeedUI(); });
+        addTouchEvt('btnVelocidad', () => { initAudio(); });
         addTouchEvt('btnSonido', () => { initAudio(); soundEnabled=!soundEnabled; document.getElementById('btnSonido').innerText=soundEnabled?"♪ ON":"♪ OFF"; });
 
         function accionPausa() { initAudio(); isPaused = !isPaused; if (isPaused) { apagarJuego(); mostrar('pauseOverlay'); } else { ocultarTodo(); encenderJuego(); } }
@@ -428,10 +540,7 @@
         agregarEventoControl('btnDerecha', grid, 0); 
         agregarEventoControl('btnAbajo', 0, grid);
 
-        setTimeout(() => { 
-            document.getElementById('splashOverlay').style.display = 'none'; 
-            irAlMenu(); 
-        }, 3500);
+        setTimeout(() => { document.getElementById('splashOverlay').style.display = 'none'; irAlMenu(); }, 3500);
 
         requestAnimationFrame(loop);
 
