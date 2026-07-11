@@ -2,7 +2,7 @@
 
 // Sube este número en cada actualización que publiques (ej: 'neon-snake-v3', 'v4'...).
 // Cambiar el nombre del caché fuerza a que los usuarios reciban los archivos nuevos.
-const CACHE_NAME = 'neon-snake-v2.2';
+const CACHE_NAME = 'neon-snake-v2.4';
 
 const ARCHIVOS_CACHE = [
   './',
